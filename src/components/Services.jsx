@@ -310,9 +310,12 @@ const Row = ({ children, reverse = false }) => {
     const ref = useRef(null);
     const inView = useInView(ref, { once: true });
 
-    const initialX = "60vw";
-    const burstX = reverse ? "calc(60vw + 5%)" : "calc(60vw - 5%)";
-    const endX = reverse ? "calc(60vw + 50%)" : "calc(60vw - 50%)";
+    // Use pure numeric percentages so Framer Motion can use GPU-accelerated interpolation
+    // instead of repeatedly parsing complex CSS `calc` strings on the main thread, 
+    // which causes severe jitter/stutter.
+    const initialX = "0%";
+    const burstX = reverse ? "5%" : "-5%";
+    const endX = reverse ? "50%" : "-50%";
 
     return (
         <div className="flex justify-start overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8 [mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]">
@@ -329,7 +332,8 @@ const Row = ({ children, reverse = false }) => {
                     times: [0, 0.00625, 1], // 0.75s at 120s total
                     repeatType: "loop"
                 }}
-                className="flex gap-10 whitespace-nowrap min-w-max"
+                className="flex gap-10 whitespace-nowrap min-w-max will-change-transform"
+                style={{ marginLeft: "60vw" }}
             >
                 {children}
                 {children}
@@ -344,11 +348,11 @@ const Row = ({ children, reverse = false }) => {
 
 
 
-const ServiceSection = ({ id, hero, left, right, bottom }) => {
+const ServiceSection = ({ id, hero, left, right, bottom, onAnimationStart, onAnimationComplete }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const ref = useRef(null);
-    const isSectionInView = useInView(ref, { once: true, amount: 0.9 });
+    const isSectionInView = useInView(ref, { once: true, amount: 0.6 });
 
     useEffect(() => {
         let resizeTimer;
@@ -397,34 +401,18 @@ const ServiceSection = ({ id, hero, left, right, bottom }) => {
     const heroScale = useTransform(heroScrollY, [0, 1], [0.95, 1]);
 
     useEffect(() => {
-        let timer;
-        let unlockTimer;
-
         if (isSectionInView && !isExpanded) {
-            // Lock the scroll briefly so they see the expansion starts
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.style.overflowY = "hidden";
-
-                unlockTimer = setTimeout(() => {
-                    if (scrollContainerRef.current) {
-                        scrollContainerRef.current.style.overflowY = "";
-                    }
-                }, 500);
-            }
-
-            // Start animation sequence when section enters view
-            timer = setTimeout(() => {
-                setIsExpanded(true);
-            }, 2000); // Give user time to see the Hero card first
+            setIsExpanded(true);
+            if (onAnimationStart) onAnimationStart();
+            
+            setTimeout(() => {
+                if (onAnimationComplete) onAnimationComplete();
+            }, 2500); // Wait for the 2.5s hero expansion to complete
         }
-        return () => {
-            clearTimeout(timer);
-            clearTimeout(unlockTimer);
-        };
-    }, [isSectionInView, isExpanded, scrollContainerRef]);
+    }, [isSectionInView, isExpanded]);
 
     return (
-        <div ref={ref} className="z-10 max-w-full mx-auto px-4 sm:px-6 lg:px-8 relative text-black">
+        <div ref={ref} className="z-10 max-w-full mx-auto pb-10 px-4 sm:px-6 lg:px-8 relative text-black">
             <motion.div layout className="grid grid-cols-1 md:grid-cols-[1fr_2.2fr_1fr] gap-6 min-h-[600px] relative">
                 {!isExpanded ? (
                     <motion.div
@@ -542,6 +530,8 @@ const ServiceSection = ({ id, hero, left, right, bottom }) => {
 };
 
 export default function Services() {
+    const [headerVisibility, setHeaderVisibility] = useState("visible");
+
     const allTags = [
         { name: "Brand Identity & Logo Design", icon: "✧", type: "outline" },
         { name: "Content Creation", icon: "✎", type: "circle", bgColor: "bg-red-600" },
@@ -615,9 +605,20 @@ export default function Services() {
             <div className="max-w-7xl mx-auto">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+                    animate={
+                        headerVisibility === "hidden"
+                            ? { opacity: 0, y: -20, filter: "blur(10px)" }
+                            : headerVisibility === "done"
+                                ? { opacity: 1, y: 0, filter: "blur(0px)" }
+                                : undefined
+                    }
+                    whileInView={headerVisibility === "visible" ? { opacity: 1, y: 0 } : undefined}
                     viewport={{ once: true }}
-                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+                    transition={
+                        headerVisibility === "hidden"
+                            ? { duration: 0.5, ease: "easeOut" }
+                            : { duration: 1.2, ease: [0.22, 1, 0.36, 1] }
+                    }
                     className="text-center mb-7"
                 >
                     <h2 className="text-4xl md:text-6xl text-gray-900 mb-4">
@@ -629,9 +630,20 @@ export default function Services() {
 
             <motion.div
                 initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
+                animate={
+                    headerVisibility === "hidden"
+                        ? { opacity: 0, filter: "blur(10px)" }
+                        : headerVisibility === "done"
+                            ? { opacity: 1, filter: "blur(0px)" }
+                            : undefined
+                }
+                whileInView={headerVisibility === "visible" ? { opacity: 1 } : undefined}
                 viewport={{ once: true }}
-                transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
+                transition={
+                    headerVisibility === "done"
+                        ? { duration: 1.5, ease: "easeOut", delay: 0.2 }
+                        : { duration: 0.6, ease: "easeOut" }
+                }
                 className="flex flex-col mb-4"
             >
                 <Row>
@@ -642,7 +654,13 @@ export default function Services() {
             </motion.div>
 
             {serviceSections.map((section, idx) => (
-                <ServiceSection key={idx} id={idx} {...section} />
+                <ServiceSection 
+                   key={idx} 
+                   id={idx} 
+                   {...section} 
+                   onAnimationStart={() => setHeaderVisibility("hidden")}
+                   onAnimationComplete={() => setHeaderVisibility("done")}
+                />
             ))}
         </section>
     );

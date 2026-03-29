@@ -202,7 +202,7 @@ function InnerApp({ mainRef }) {
                                     </section>
 
                                     {/* Gate 1: scroll stops HERE first */}
-                                    <section data-gate="trustbar" className="relative w-full bg-white text-black">
+                                    <section className="relative w-full bg-white text-black">
                                         <TrustBar />
                                     </section>
 
