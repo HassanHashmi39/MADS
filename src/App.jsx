@@ -80,6 +80,11 @@ function useScrollGates(containerRef, enabled) {
         gatesPassed.current = { trustbar: false, services: false };
         frozen.current = false;
 
+        // Timestamp of last freeze — prevents same wheel momentum from
+        // immediately unfreezing the gate that was just triggered
+        let lastFreezeAt = 0;
+        const FREEZE_PROTECT_MS = 450;
+
         // Get scrollTop position of a section's top edge
         const getSectionScrollTop = (name) => {
             const el = container.querySelector(`[data-gate="${name}"]`);
@@ -94,12 +99,14 @@ function useScrollGates(containerRef, enabled) {
             container.scrollTop = atScrollTop;
             frozenAt.current = atScrollTop;
             frozen.current = true;
+            lastFreezeAt = Date.now();
             container.style.overflowY = "hidden";
         };
 
-        // Unlock: restore normal scrolling
+        // Unlock: restore normal scrolling (only after protection window has passed)
         const unfreeze = () => {
             if (!frozen.current) return;
+            if (Date.now() - lastFreezeAt < FREEZE_PROTECT_MS) return;
             frozen.current = false;
             container.style.overflowY = "scroll";
         };
