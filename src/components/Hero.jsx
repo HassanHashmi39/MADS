@@ -60,7 +60,7 @@ export default function Hero() {
 
                 {/* Right Content: Subtext and Button */}
                 <div className="flex flex-col items-start gap-5 lg:mb-4 lg:ml-[-4rem] max-w-xs translate-y-30">
-                    <div className="text-gray-900  text-md font-medium leading-tight">
+                    <div className="text-gray-900  text-lg font-medium leading-tight">
                         <p>Otherwise</p>
                         <p>Mads work free until you succeed</p>
                     </div>

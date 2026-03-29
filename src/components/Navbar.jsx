@@ -53,7 +53,7 @@ export default function Navbar() {
                     <div className="absolute inset-0 pointer-events-none"
                         style={{
                             background: 'rgba(255, 255, 255, 0.003)',
-                            boxShadow: '0px 4px 14px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255,255,255,0.7)',
+                            boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255,255,255,0.7)',
                             border: '1px solid rgba(255, 255, 255, 0.4)',
                         }}
                     />
@@ -169,7 +169,7 @@ export default function Navbar() {
                                 style={{
                                     background: 'white',
                                     border: '1px solid rgba(255,255,255,0.4)',
-                                    boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.6), 0 8px 32px rgba(0,0,0,0.08), inset 2px 0 4px rgba(255,50,50,0.04), inset -2px 0 4px rgba(50,50,255,0.04)',
+                                    boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.6), 0 4px 20px rgba(0,0,0,0.04), inset 2px 0 4px rgba(255,50,50,0.02), inset -2px 0 4px rgba(50,50,255,0.02)',
                                 }}
                             >
                                 <ul className="flex flex-col gap-2">

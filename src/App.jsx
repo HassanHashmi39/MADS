@@ -9,6 +9,7 @@ import Video from "./components/Video";
 const TrustBar = React.lazy(() => import("./components/TrustBar"));
 const Gallery = React.lazy(() => import("./components/gallery"));
 const Services = React.lazy(() => import("./components/Services"));
+const ServiceShowcase = React.lazy(() => import("./components/ServiceShowcase"));
 const WhyMads = React.lazy(() => import("./components/WhyMads"));
 const Process = React.lazy(() => import("./components/Process"));
 const Pricing = React.lazy(() => import("./components/Pricing"));
@@ -203,6 +204,10 @@ function InnerApp({ mainRef }) {
                                         <div className="relative z-10 bg-white">
                                             <Services />
                                         </div>
+                                    </section>
+
+                                    <section className="relative w-full z-10 bg-white -mt-16">
+                                        <ServiceShowcase />
                                     </section>
 
                                     <section className="relative h-[200vh] z-20">

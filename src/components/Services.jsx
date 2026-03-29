@@ -188,38 +188,53 @@ const CircleProgressVisual = () => {
     );
 };
 
-const ServiceCard = ({ title, description, tags, image, bgColor = "bg-white", textColor = "text-gray-900", tagBg = "bg-gray-100", tagText = "text-gray-600", sharedLayoutId, customVisual, small = false }) => {
+const ServiceCard = ({ title, description, tags, image, bgColor = "bg-white", textColor = "text-gray-900", tagBg = "bg-gray-100", tagText = "text-gray-600", sharedLayoutId, customVisual, small = false, fullBackground = false, showTags = true, showDescription = true }) => {
     return (
         <motion.div
             whileHover={{ y: -5, scale: 1.02 }}
             transition={{ duration: 1.3 }}
-            className={`${bgColor} ${small ? "p-4 rounded-[24px]" : "p-8 rounded-[40px]"} border border-gray-200 flex flex-col h-full hover:shadow-2xl transition-all duration-300 cursor-pointer overflow-hidden relative group`}
+            className={`${fullBackground ? "bg-black" : bgColor} ${small ? "p-4 rounded-[24px]" : "p-8 rounded-[40px]"} border border-gray-200 flex flex-col h-full hover:shadow-2xl cursor-pointer overflow-hidden relative group`}
         >
+            {fullBackground && image && (
+                <div className="absolute inset-0 z-0">
+                    <img
+                        src={image}
+                        alt={title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-60"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                </div>
+            )}
+
             <div className="relative z-10 flex flex-col h-full">
                 {/* Tags */}
-                <div className={`flex flex-wrap gap-1.5 ${small ? "mb-3" : "mb-6"}`}>
-                    {tags.map((tag) => (
-                        <span
-                            key={tag}
-                            className={`${small ? "px-2 py-0.5 text-[9px]" : "px-4 py-1.5 text-xs"} ${tagBg} ${tagText} font-medium rounded-full`}
-                        >
-                            {tag}
-                        </span>
-                    ))}
-                </div>
+                {showTags && tags && tags.length > 0 && (
+                    <div className={`flex flex-wrap gap-1.5 ${small ? "mb-3" : "mb-6"}`}>
+                        {tags.map((tag) => (
+                            <span
+                                key={tag}
+                                className={`${small ? "px-2 py-0.5 text-[9px]" : "px-4 py-1.5 text-xs"} ${tagBg} ${tagText} font-medium rounded-full`}
+                            >
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                )}
 
                 {/* Title */}
-                <h3 className={`${small ? "text-lg" : "text-3xl"} font-bold ${textColor} ${small ? "mb-1.5" : "mb-3"}`}>
+                <h3 className={`${small ? "text-lg" : "text-3xl"} font-bold ${fullBackground ? "text-white" : textColor} ${small ? "mb-1.5" : "mb-3"}`}>
                     {title}
                 </h3>
 
                 {/* Description */}
-                <p className={`text-gray-500 ${small ? "text-[11px]" : "text-sm"} leading-relaxed`}>
-                    {description}
-                </p>
+                {showDescription && description && (
+                    <p className={`${fullBackground ? "text-white/80" : "text-gray-500"} ${small ? "text-[11px]" : "text-sm"} leading-relaxed`}>
+                        {description}
+                    </p>
+                )}
 
                 {/* Image Box (Below description) */}
-                {image && (
+                {image && !fullBackground && (
                     <motion.div
                         className="mt-8 flex-1 w-full rounded-[32px] overflow-hidden bg-gray-100 relative"
                         layoutId={sharedLayoutId}
@@ -291,14 +306,43 @@ const Tag = ({ children, icon, type, bgColor }) => {
     return null;
 };
 
-const Row = ({ children, reverse = false }) => (
-    <div className="flex overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8">
-        <div className={`flex gap-2 whitespace-nowrap min-w-max ${reverse ? 'animate-marquee-reverse' : 'animate-marquee'}`}>
-            {children}
-            {children}
+const Row = ({ children, reverse = false }) => {
+    const ref = useRef(null);
+    const inView = useInView(ref, { once: true });
+
+    const initialX = "60vw";
+    const burstX = reverse ? "calc(60vw + 5%)" : "calc(60vw - 5%)";
+    const endX = reverse ? "calc(60vw + 50%)" : "calc(60vw - 50%)";
+
+    return (
+        <div className="flex justify-start overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8 [mask-image:linear-gradient(to_right,transparent,black_15%,black_85%,transparent)]">
+            <motion.div
+                ref={ref}
+                initial={{ x: initialX }}
+                animate={inView ? {
+                    x: [initialX, burstX, endX]
+                } : {}}
+                transition={{
+                    duration: 120,
+                    repeat: Infinity,
+                    ease: ["easeOut", "linear"],
+                    times: [0, 0.00625, 1], // 0.75s at 120s total
+                    repeatType: "loop"
+                }}
+                className="flex gap-10 whitespace-nowrap min-w-max"
+            >
+                {children}
+                {children}
+            </motion.div>
         </div>
-    </div>
-);
+    );
+};
+
+
+
+
+
+
 
 const ServiceSection = ({ id, hero, left, right, bottom }) => {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -327,10 +371,30 @@ const ServiceSection = ({ id, hero, left, right, bottom }) => {
         offset: ["start end", "end start"]
     });
 
-    // Side images move up faster
-    const ySideFast = useTransform(scrollYProgress, [0, 1], [150, -150]);
-    // Center image moves up slower
-    const yCenterSlow = useTransform(scrollYProgress, [0, 1], [30, -30]);
+    // Consolidated Parallax: Side cards move SIGNIFICANTLY faster than the Hero card
+    const convergePoint = 0.6;
+    const sideExitY = -1400;  // Extremely high speed exit for sides/bottom
+    const heroExitY = -80;   // Very slow, sticky exit for Hero
+
+    // Hero card stays almost stationary to keep focus
+    const yHero = useTransform(scrollYProgress, [0, convergePoint, 1], [80, 0, heroExitY]);
+
+    // Side cards start from lower and zoom past the hero at high speed
+    const yLeft = useTransform(scrollYProgress, [0, convergePoint, 1], [200, -128, sideExitY - 128]);
+    const yRight = useTransform(scrollYProgress, [0, convergePoint, 1], [200, -192, sideExitY - 192]);
+
+    // Bottom cards follow the extreme high-speed side parallax
+    const yBottom = useTransform(scrollYProgress, [0, convergePoint, 1], [200, 0, sideExitY]);
+
+    // Hero Entry Opacity: 50% when start showing, 100% when fully in view
+    const heroRef = useRef(null);
+    const { scrollYProgress: heroScrollY } = useScroll({
+        target: heroRef,
+        container: scrollContainerRef,
+        offset: ["start end", "0.8 end"]
+    });
+    const heroOpacity = useTransform(heroScrollY, [0, 1], [0.5, 1]);
+    const heroScale = useTransform(heroScrollY, [0, 1], [0.95, 1]);
 
     useEffect(() => {
         let timer;
@@ -360,18 +424,21 @@ const ServiceSection = ({ id, hero, left, right, bottom }) => {
     }, [isSectionInView, isExpanded, scrollContainerRef]);
 
     return (
-        <div ref={ref} className="z-10 max-w-full pb-10 pt-10 mx-auto px-4 sm:px-6 lg:px-8 mb-16 md:mb-8 last:mb-0 relative text-black">
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_2.2fr_1fr] gap-6 min-h-[600px] relative pb-16 md:pb-0">
+        <div ref={ref} className="z-10 max-w-full mx-auto px-4 sm:px-6 lg:px-8 relative text-black">
+            <motion.div layout className="grid grid-cols-1 md:grid-cols-[1fr_2.2fr_1fr] gap-6 min-h-[600px] relative">
                 {!isExpanded ? (
                     <motion.div
-                        className="md:col-span-3 flex justify-center items-center relative"
-                        layoutId={`hero-card-${id}`}
-                        transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
+                        layout
+                        className="md:col-span-3 flex justify-center items-center relative -mx-4 sm:-mx-6 lg:-mx-8"
                         key="hero-card-container"
                     >
                         <motion.div
-                            className="w-[90vw] h-[500px] relative overflow-hidden rounded-[40px] group"
+                            ref={heroRef}
+                            layoutId={`hero-card-container-${id}`}
+                            className="w-[95vw] h-[450px] relative overflow-hidden md:rounded-[40px] group z-20"
                             whileHover="hover"
+                            style={{ opacity: heroOpacity, scale: heroScale, y: !isMobile ? yHero : 0 }}
+                            transition={{ duration: 2.5, ease: [0.32, 0.72, 0, 1] }}
                         >
                             <ServiceCard {...hero} sharedLayoutId={`hero-image-${id}`} />
 
@@ -413,55 +480,55 @@ const ServiceSection = ({ id, hero, left, right, bottom }) => {
                     <>
                         {/* Card 1 - Left */}
                         <motion.div
-                            className="h-auto w-[325px] md:w-[435px] min-h-[400px] md:h-[500px] md:mt-16 order-2 md:order-1"
-                            style={!isMobile ? { y: ySideFast } : undefined}
-                            initial={{ opacity: 0, scale: 0.9, x: -50 }}
-                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                            transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1], delay: 0.3 }}
+                            className="h-auto w-[325px] md:w-[435px] min-h-[400px] md:h-[500px] md:mt-32 order-2 md:order-1"
+                            style={!isMobile ? { y: yLeft } : undefined}
+                            initial={{ opacity: 0, x: -100, scale: 0.98 }}
+                            animate={{ opacity: 1, x: 0, scale: 1 }}
+                            transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1], delay: 0.8 }}
                             key="card-left"
                         >
                             <ServiceCard {...left} />
                         </motion.div>
 
                         {/* Middle — Hero card only, no bottom cards here */}
-                        <div className="flex flex-col items-center order-1 pb-10 md:order-2">
+                        <motion.div layout className="flex flex-col items-center order-1 pb-10 md:order-2">
                             {/* Card 2 - Hero (Middle) */}
                             <motion.div
-                                layoutId={`hero-card-${id}`}
-                                transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
-                                style={!isMobile ? { y: yCenterSlow } : undefined}
+                                layoutId={`hero-card-container-${id}`}
+                                transition={{ duration: 2.5, ease: [0.32, 0.72, 0, 1] }}
+                                style={!isMobile ? { y: yHero } : undefined}
                                 key="card-middle"
-                                className="w-[325px] md:w-[435px] h-[400px] md:h-[500px]"
+                                className="w-[325px] md:w-[435px] h-[320px] md:h-[380px] z-20"
                             >
                                 <div className="h-full w-full relative">
                                     <ServiceCard {...hero} sharedLayoutId={`hero-image-${id}`} />
                                 </div>
                             </motion.div>
-                        </div>
+                        </motion.div>
 
                         {/* Card 3 - Right */}
                         <motion.div
-                            className="h-auto w-[325px] md:w-[435px] min-h-[400px] md:h-[450px] md:mt-24 order-3"
-                            style={!isMobile ? { y: ySideFast } : undefined}
-                            initial={{ opacity: 0, scale: 0.9, x: 50 }}
-                            animate={{ opacity: 1, scale: 1, x: 0 }}
-                            transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1], delay: 0.9 }}
+                            className="h-auto w-[325px] md:w-[435px] min-h-[400px] md:h-[450px] md:mt-48 order-3"
+                            style={!isMobile ? { y: yRight } : undefined}
+                            initial={{ opacity: 0, x: 100, scale: 0.98 }}
+                            animate={{ opacity: 1, x: 0, scale: 1 }}
+                            transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1], delay: 0.8 }}
                             key="card-right"
                         >
                             <ServiceCard {...right} />
                         </motion.div>
                     </>
                 )}
-            </div>
+            </motion.div>
 
             {/* Bottom Cards — full-width 2-column row BELOW the top 3 cards, same ySideFast parallax */}
             {isExpanded && (
                 <motion.div
                     className="grid grid-cols-1 md:grid-cols-2 gap-9 "
-                    style={!isMobile ? { y: ySideFast } : undefined}
-                    initial={{ opacity: 0, y: 60 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1], delay: 0.6 }}
+                    style={!isMobile ? { y: yBottom } : undefined}
+                    initial={{ opacity: 0, y: 50, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1], delay: 0.8 }}
                 >
                     {bottom.map((card, idx) => (
                         <div key={idx} className="h-[380px] md:h-[420px]">
@@ -504,7 +571,10 @@ export default function Services() {
                 title: "Social Media Management",
                 description: "We craft unique and memorable brand identities that reflect your business values and resonate with your audience.",
                 tags: ["SMM Strategy & Planning", "Content Creation"],
-                image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=50&w=800&auto=format&fit=crop"
+                image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=50&w=800&auto=format&fit=crop",
+                fullBackground: true,
+                showTags: false,
+                showDescription: false
             },
             left: {
                 title: "Branding & Strategy",
@@ -540,24 +610,36 @@ export default function Services() {
     ];
 
     return (
-        <section className="relative z-0 bg-white min-h-screen flex flex-col justify-center pt-10 pb-20 overflow-hidden">
+        <section className="relative z-0 bg-white flex flex-col justify-center pt-10 overflow-hidden">
 
             <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-7">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+                    className="text-center mb-7"
+                >
                     <h2 className="text-4xl md:text-6xl text-gray-900 mb-4">
                         What We Offer
                     </h2>
-                    <p>At MADS! We are committed to delivering exceptional services</p>
-                </div>
+                    <p className="text-gray-500">At MADS! We are committed to delivering exceptional services</p>
+                </motion.div>
             </div>
 
-            <div className="flex flex-col mb-4">
+            <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
+                className="flex flex-col mb-4"
+            >
                 <Row>
                     {allTags.map((item, idx) => (
                         <Tag key={idx} {...item}>{item.name}</Tag>
                     ))}
                 </Row>
-            </div>
+            </motion.div>
 
             {serviceSections.map((section, idx) => (
                 <ServiceSection key={idx} id={idx} {...section} />
