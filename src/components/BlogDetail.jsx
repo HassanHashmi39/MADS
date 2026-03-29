@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "motion/react";
 
 const BlogDetail = () => {
-    const { id } = useParams();
+    useParams();
 
     // In a real app, you'd fetch data based on ID. 
     // For now, we'll use placeholder content that feels premium.

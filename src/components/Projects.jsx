@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, useInView, useSpring, useTransform } from 'motion/react';
 import { Link } from 'react-router-dom';
 
@@ -105,10 +105,10 @@ export default function Projects() {
         }
     ];
 
-    const nextSlide = () => {
+    const nextSlide = useCallback(() => {
         setDirection(1);
         setCurrentIndex((prev) => (prev + 1) % projectItems.length);
-    };
+    }, [projectItems.length]);
 
     const prevSlide = () => {
         setDirection(-1);
@@ -124,7 +124,7 @@ export default function Projects() {
             }, 2000);
         }
         return () => clearInterval(interval);
-    }, [isSectionInView, isAutoplayPaused]);
+    }, [isSectionInView, isAutoplayPaused, nextSlide]);
 
     // Reset when out of view
     useEffect(() => {

@@ -5,7 +5,7 @@ import contactVisual from "../assets/contact.webp";
 import contactBg from "../assets/contact2.webp";
 
 const ContactPage = () => {
-    const [formData, setFormData] = useState({
+    const [, setFormData] = useState({
         firstName: "",
         lastName: "",
         email: "",
